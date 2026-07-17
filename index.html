@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FunTime Checker — быстрая и понятная проверка игрока</title>
+  <meta name="description" content="FunTime Checker за несколько секунд показывает подозрительные программы, удалённые файлы и попытки скрыть историю.">
+  <meta name="theme-color" content="#050505">
+  <meta property="og:title" content="FunTime Checker — проверка без догадок">
+  <meta property="og:description" content="Инструмент для проверяющих FunTime. Понятный результат за несколько секунд.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://funtimecheker.github.io/">
+  <link rel="canonical" href="https://funtimecheker.github.io/">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23050505'/%3E%3Crect x='11' y='11' width='42' height='42' rx='9' fill='%239b0b26'/%3E%3Ctext x='32' y='38' text-anchor='middle' font-family='Arial' font-size='18' font-weight='900' fill='white'%3EFT%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/style.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "FunTime Checker",
+    "url": "https://funtimecheker.github.io/",
+    "operatingSystem": "Windows 10, Windows 11",
+    "applicationCategory": "SecurityApplication",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "RUB" },
+    "description": "Инструмент для быстрой и понятной проверки игрока на запрещённые программы."
+  }
+  </script>
+</head>
+<body class="is-loading">
+  <div class="boot" id="boot" aria-hidden="true">
+    <div class="boot-mark">
+      <span class="boot-ring"></span>
+      <span class="boot-cross boot-cross-x"></span>
+      <span class="boot-cross boot-cross-y"></span>
+      <span class="boot-core"></span>
+    </div>
+    <div class="boot-copy"><span>FT CHECKER</span><span id="bootPercent">00</span></div>
+    <div class="boot-line"><i id="bootLine"></i></div>
+  </div>
+
+  <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+  <div class="cursor" id="cursor" aria-hidden="true"><span></span></div>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="ambient ambient-a" data-parallax="-0.035" aria-hidden="true"></div>
+  <div class="ambient ambient-b" data-parallax="0.025" aria-hidden="true"></div>
+
+  <header class="site-header" id="siteHeader">
+    <div class="shell header-inner">
+      <a class="brand" href="#top" aria-label="FunTime Checker — наверх">
+        <span class="brand-mark" aria-hidden="true">
+          <i></i><b></b>
+        </span>
+        <span class="brand-type">FUN<em>TIME</em><small>CHECKER</small></span>
+      </a>
+
+      <nav class="nav" id="nav" aria-label="Основная навигация">
+        <a href="#search" data-section="search">Как работает</a>
+        <a href="#features" data-section="features">Возможности</a>
+        <a href="#coverage" data-section="coverage">Что проверяет</a>
+        <a href="#faq" data-section="faq">Вопросы</a>
+      </nav>
+
+      <a class="header-cta magnetic" href="#download"><span>Скачать</span><i aria-hidden="true">↗</i></a>
+      <button class="menu-toggle" id="menuToggle" type="button" aria-label="Открыть меню" aria-expanded="false">
+        <span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="top" aria-labelledby="heroTitle">
+      <canvas class="hero-canvas" id="heroCanvas" aria-hidden="true"></canvas>
+      <div class="hero-grid" aria-hidden="true"></div>
+      <div class="shell hero-layout">
+        <div class="hero-copy">
+          <div class="status-pill intro-item">
+            <i></i><span>Готов к проверке</span><b>Windows 10 и 11</b>
+          </div>
+
+          <h1 id="heroTitle" class="hero-title" aria-label="Проверка без догадок. Только факты.">
+            <span class="title-line"><i>Проверка</i></span>
+            <span class="title-line title-secondary"><i>без догадок.</i></span>
+            <span class="title-line title-accent"><i>Только факты.</i></span>
+          </h1>
+
+          <div class="hero-bottom intro-item">
+            <p>FunTime Checker за несколько секунд показывает подозрительные программы, удалённые файлы и попытки скрыть историю. Решение всегда остаётся за проверяющим.</p>
+            <div class="hero-actions">
+              <a class="button button-primary magnetic" href="#download">
+                <span>Скачать для Windows</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v13m0 0 5-5m-5 5-5-5M4 21h16"/></svg>
+              </a>
+              <a class="button button-ghost" href="#search"><span>Запустить демо</span><i>↓</i></a>
+            </div>
+          </div>
+
+          <div class="hero-proof intro-item" aria-label="Характеристики">
+            <div><strong data-counter="8" data-suffix=" сек">0</strong><span>полный скан</span></div>
+            <div><strong data-counter="4" data-suffix=" зоны">0</strong><span>проверяются вместе</span></div>
+            <div><strong data-counter="100" data-suffix="%">0</strong><span>локально на ПК</span></div>
+          </div>
+        </div>
+
+        <div class="hero-visual intro-item" data-parallax="0.018">
+          <div class="visual-label visual-label-top"><i></i> проверка идёт сейчас</div>
+          <div class="scanner" id="scanner">
+            <div class="scanner-halo"></div>
+            <div class="scanner-ring ring-one"></div>
+            <div class="scanner-ring ring-two"></div>
+            <div class="scanner-ring ring-three"></div>
+            <div class="scanner-sweep"></div>
+            <div class="scanner-axis scanner-axis-x"></div>
+            <div class="scanner-axis scanner-axis-y"></div>
+            <div class="scanner-core">
+              <span id="scanValue">87</span><sup>%</sup>
+              <small>проверено</small>
+            </div>
+            <div class="orbit orbit-a"><span></span></div>
+            <div class="orbit orbit-b"><span></span></div>
+            <div class="scanner-ping ping-a"></div>
+            <div class="scanner-ping ping-b"></div>
+          </div>
+
+          <div class="float-card threat-card tilt-card" data-tilt>
+            <div class="card-kicker"><i></i> Найдено совпадение</div>
+            <strong>nursultan.exe</strong>
+            <span>C:\Users\...\Temp\</span>
+            <div class="threat-meta"><b>УДАЛЁН РАНЕЕ</b><time>14:32:08</time></div>
+            <div class="card-glare"></div>
+          </div>
+
+          <div class="float-card hash-card">
+            <span>СВЯЗАННЫЕ СОБЫТИЯ</span>
+            <strong>3 ИЗ 4</strong>
+            <i><b></b></i>
+          </div>
+
+          <div class="visual-label visual-label-bottom"><span>ДАННЫЕ ОСТАЮТСЯ НА ПК</span><span>ПРОВЕРКА ИДЁТ</span></div>
+        </div>
+      </div>
+
+      <div class="hero-index" aria-hidden="true"><span>FUNTIME CHECKER</span><span>ЛИСТАЙ, ЧТОБЫ УЗНАТЬ БОЛЬШЕ</span><i></i></div>
+    </section>
+
+    <div class="ticker" aria-label="Типы анализа">
+      <div class="ticker-track">
+        <div class="ticker-group">
+          <span>ФАЙЛЫ НА ДИСКЕ</span><i></i><span>ИСТОРИЯ ЗАПУСКОВ</span><i></i><span>УДАЛЁННЫЕ ДАННЫЕ</span><i></i><span>НЕДАВНИЕ ДЕЙСТВИЯ</span><i></i><span>ЗАПУЩЕННЫЕ ПРОГРАММЫ</span><i></i><span>ГОТОВЫЙ ОТЧЁТ</span><i></i>
+        </div>
+        <div class="ticker-group" aria-hidden="true">
+          <span>ФАЙЛЫ НА ДИСКЕ</span><i></i><span>ИСТОРИЯ ЗАПУСКОВ</span><i></i><span>УДАЛЁННЫЕ ДАННЫЕ</span><i></i><span>НЕДАВНИЕ ДЕЙСТВИЯ</span><i></i><span>ЗАПУЩЕННЫЕ ПРОГРАММЫ</span><i></i><span>ГОТОВЫЙ ОТЧЁТ</span><i></i>
+        </div>
+      </div>
+    </div>
+
+    <section class="section search-section" id="search" aria-labelledby="searchTitle">
+      <div class="shell">
+        <div class="section-heading" data-reveal>
+          <div class="section-id"><i></i><b>КАК ЭТО РАБОТАЕТ</b></div>
+          <h2 id="searchTitle">Результат видно<br><em>сразу.</em></h2>
+          <p>Никаких длинных таблиц и непонятных кодов. Введи название программы — Checker соберёт все связанные события в одном месте.</p>
+        </div>
+
+        <div class="search-stage" data-reveal>
+          <div class="window-bar">
+            <div class="window-dots"><i></i><i></i><i></i></div>
+            <span>FUNTIME CHECKER — РЕЗУЛЬТАТЫ ПРОВЕРКИ</span>
+            <b><i></i> ДАННЫЕ ГОТОВЫ</b>
+          </div>
+
+          <div class="search-command">
+            <span class="command-prefix">ПОИСК:</span>
+            <label class="sr-only" for="searchInput">Поиск по демо-индексу</label>
+            <input id="searchInput" type="search" autocomplete="off" spellcheck="false" placeholder="введите запрос..." value="nursultan">
+            <kbd>⌘ K</kbd>
+          </div>
+
+          <div class="quick-queries" aria-label="Быстрые запросы">
+            <span>ПРИМЕРЫ:</span>
+            <button type="button" data-query="nursultan" class="active">nursultan</button>
+            <button type="button" data-query="*.jar">*.jar</button>
+            <button type="button" data-query="запуск">история запусков</button>
+            <button type="button" data-query=":deleted">удалённые</button>
+            <button type="button" data-query="">сбросить</button>
+          </div>
+
+          <div class="result-meta">
+            <span id="resultStatus"><i></i> ПОИСК ЗАВЕРШЁН</span>
+            <span id="resultMeta">4 совпадения · проверка завершена</span>
+          </div>
+
+          <div class="result-table" role="region" aria-live="polite" aria-label="Результаты поиска">
+            <div class="result-head"><span>ФАЙЛ ИЛИ СОБЫТИЕ</span><span>ГДЕ НАЙДЕНО</span><span>ВРЕМЯ</span><span>РЕЗУЛЬТАТ</span></div>
+            <div id="searchResults"></div>
+            <div class="result-empty" id="resultEmpty" hidden>
+              <span>∅</span><strong>Совпадений нет</strong><p>Измени запрос или выбери пример выше.</p>
+            </div>
+          </div>
+
+          <div class="search-footer"><span>Проверка по всему диску завершена</span><span>Локальный режим · данные никуда не отправляются</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section features-section" id="features" aria-labelledby="featuresTitle">
+      <div class="shell">
+        <div class="section-heading split" data-reveal>
+          <div>
+            <div class="section-id"><i></i><b>ВОЗМОЖНОСТИ</b></div>
+            <h2 id="featuresTitle">Всё важное.<br><em>На одном экране.</em></h2>
+          </div>
+          <p>Checker не просто показывает подозрительный файл. Он объясняет, когда тот появился, запускался ли и что происходило после.</p>
+        </div>
+
+        <div class="bento">
+          <article class="feature-card feature-wide tilt-card" data-tilt data-reveal>
+            <div class="feature-top"><span>Быстрая проверка</span><i>↗</i></div>
+            <div class="mft-visual" aria-hidden="true">
+              <div class="mft-beam"></div>
+              <div class="mft-row"><span>●</span><i></i><b>ФАЙЛЫ</b><em>ГОТОВО</em></div>
+              <div class="mft-row"><span>●</span><i></i><b>ПАПКИ</b><em>ГОТОВО</em></div>
+              <div class="mft-row hot"><span>●</span><i></i><b>НАЙДЕНО СОВПАДЕНИЕ</b><em>ВНИМАНИЕ</em></div>
+              <div class="mft-row"><span>●</span><i></i><b>ИСТОРИЯ ДЕЙСТВИЙ</b><em>ГОТОВО</em></div>
+              <div class="mft-row"><span>●</span><i></i><b>АКТИВНЫЕ ПРОГРАММЫ</b><em>ГОТОВО</em></div>
+            </div>
+            <div class="feature-copy"><h3>Весь диск.<br>Пара секунд.</h3><p>Checker получает список файлов напрямую из Windows, поэтому не тратит время на последовательный обход каждой папки.</p></div>
+            <div class="card-glare"></div>
+          </article>
+
+          <article class="feature-card feature-tall trace-feature tilt-card" data-tilt data-reveal>
+            <div class="feature-top"><span>История действий</span><i>↗</i></div>
+            <div class="trace-orbit" aria-hidden="true">
+              <span class="trace-ring tr-one"></span><span class="trace-ring tr-two"></span>
+              <b>УДАЛЕНО<small>но всё ещё видно</small></b>
+              <i class="trace-dot td-a"></i><i class="trace-dot td-b"></i><i class="trace-dot td-c"></i>
+            </div>
+            <div class="feature-copy"><h3>Удалили файл?<br>История осталась.</h3><p>Windows помнит недавние запуски и удаления. Checker собирает эти события и отдельно отмечает попытки очистить историю.</p></div>
+            <div class="card-glare"></div>
+          </article>
+
+          <article class="feature-card feature-small signature-feature tilt-card" data-tilt data-reveal>
+            <div class="feature-top"><span>Проверено на практике</span><i>↗</i></div>
+            <strong class="giant-number giant-word">ОПЫТ</strong>
+            <div class="feature-copy"><h3>Проверено на практике</h3><p>Логика поиска собрана на основе реальных проверок и постоянно уточняется вместе с командой модераторов.</p></div>
+            <div class="card-glare"></div>
+          </article>
+
+          <article class="feature-card feature-small privacy-feature tilt-card" data-tilt data-reveal>
+            <div class="feature-top"><span>Локальная обработка</span><i>↗</i></div>
+            <div class="lock-visual" aria-hidden="true"><span></span><i></i><b>ТОЛЬКО<br>НА ПК</b></div>
+            <div class="feature-copy"><h3>Ничего не уходит в сеть</h3><p>Анализ выполняется локально, не изменяет файлы игрока и не отправляет данные за пределы компьютера.</p></div>
+            <div class="card-glare"></div>
+          </article>
+
+          <article class="feature-card feature-wide report-feature tilt-card" data-tilt data-reveal>
+            <div class="feature-top"><span>Понятный отчёт</span><i>↗</i></div>
+            <div class="report-visual" aria-hidden="true">
+              <div class="report-side"><i></i><i></i><i></i><i></i></div>
+              <div class="report-body">
+                <span>РЕЗУЛЬТАТ ПРОВЕРКИ № 19024</span>
+                <strong>Найдены важные события</strong>
+                <div><i style="--w: 92%"></i></div><div><i style="--w: 64%"></i></div><div><i style="--w: 78%"></i></div>
+              </div>
+              <b>СОХРАНИТЬ<br>ОТЧЁТ ↗</b>
+            </div>
+            <div class="feature-copy"><h3>Результат, который<br>легко проверить.</h3><p>Готовый отчёт показывает события по времени и объясняет, почему каждое из них попало в результат.</p></div>
+            <div class="card-glare"></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section coverage-section" id="coverage" aria-labelledby="coverageTitle">
+      <div class="shell coverage-shell">
+        <div class="coverage-heading" data-reveal>
+          <div class="section-id"><i></i><b>ЧТО ПРОВЕРЯЕТ</b></div>
+          <h2 id="coverageTitle">Четыре зоны.<br><em>Одна картина.</em></h2>
+          <p>Checker проверяет их одновременно, а тебе показывает уже связанный и понятный результат.</p>
+        </div>
+
+        <div class="coverage-interface" data-reveal>
+          <div class="coverage-tabs" role="tablist" aria-label="Слои анализа">
+            <button class="coverage-tab active" type="button" role="tab" aria-selected="true" data-layer="0"><b>Файлы и загрузки</b><i>↗</i></button>
+            <button class="coverage-tab" type="button" role="tab" aria-selected="false" data-layer="1"><b>История запусков</b><i>↗</i></button>
+            <button class="coverage-tab" type="button" role="tab" aria-selected="false" data-layer="2"><b>Удалённые следы</b><i>↗</i></button>
+            <button class="coverage-tab" type="button" role="tab" aria-selected="false" data-layer="3"><b>Что запущено сейчас</b><i>↗</i></button>
+          </div>
+
+          <div class="layer-display">
+            <div class="layer-radar" aria-hidden="true">
+              <span class="lr lr-a"></span><span class="lr lr-b"></span><span class="lr lr-c"></span>
+              <i class="radar-sweep"></i>
+              <b id="layerCode">ФАЙЛЫ</b>
+              <em class="radar-node rn-a"></em><em class="radar-node rn-b"></em><em class="radar-node rn-c"></em>
+            </div>
+            <div class="layer-copy">
+              <div class="layer-number">Область проверки</div>
+              <h3 id="layerTitle">Файлы и загрузки</h3>
+              <p id="layerDescription">Checker быстро просматривает весь диск: загрузки, временные папки, игровые каталоги и файлы, которые недавно перемещали.</p>
+              <ul id="layerList">
+                <li><i></i><span>Загрузки и временные папки</span><b>ПРОВЕРЕНО</b></li>
+                <li><i></i><span>Игровые каталоги</span><b>ПРОВЕРЕНО</b></li>
+                <li><i></i><span>Недавно изменённые файлы</span><b>ПРОВЕРЕНО</b></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section workflow-section" id="workflow" aria-labelledby="workflowTitle">
+      <div class="shell">
+        <div class="section-heading split" data-reveal>
+          <div>
+            <div class="section-id"><i></i><b>КАК ПРОХОДИТ ПРОВЕРКА</b></div>
+            <h2 id="workflowTitle">От запуска<br><em>до результата.</em></h2>
+          </div>
+          <p>Никаких сложных настроек и десятка отдельных программ. Весь процесс помещается в три понятных шага.</p>
+        </div>
+
+        <div class="workflow" data-reveal>
+          <div class="workflow-line"><i id="workflowProgress"></i></div>
+          <article class="workflow-step active">
+            <div class="step-number"><span>Подготовка</span><i></i></div>
+            <div class="step-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16"/></svg></div>
+            <h3>Открой</h3><p>Один файл без установки и лишних настроек.</p><span class="step-time">Без установки</span>
+          </article>
+          <article class="workflow-step">
+            <div class="step-number"><span>Автоматически</span><i></i></div>
+            <div class="step-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg></div>
+            <h3>Начни проверку</h3><p>Checker сам проверит файлы, историю действий и запущенные программы.</p><span class="step-time">Около 8 секунд</span>
+          </article>
+          <article class="workflow-step">
+            <div class="step-number"><span>Результат</span><i></i></div>
+            <div class="step-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5h16v14H4zM8 15l3-3 2 2 4-5"/></svg></div>
+            <h3>Получи картину</h3><p>Все важные события уже собраны по времени в готовом отчёте.</p><span class="step-time">Готово</span>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section evidence-section" id="evidence" aria-labelledby="evidenceTitle">
+      <div class="shell evidence-layout">
+        <div class="evidence-copy" data-reveal>
+          <div class="section-id"><i></i><b>ПРИМЕР РЕЗУЛЬТАТА</b></div>
+          <h2 id="evidenceTitle">Файл удалён.<br><em>История осталась.</em></h2>
+          <p>Checker раскладывает действия по времени и показывает, как они связаны. Проверяющий видит не предположение, а последовательность событий.</p>
+          <div class="evidence-legend"><span><i class="danger"></i>важное</span><span><i class="warn"></i>требует внимания</span><span><i class="clean"></i>обычное событие</span></div>
+        </div>
+
+        <div class="timeline-window tilt-card" data-tilt data-reveal>
+          <div class="timeline-top"><span>ПРОВЕРКА FT-19024</span><b><i></i> НУЖНО РЕШЕНИЕ МОДЕРАТОРА</b></div>
+          <div class="timeline-summary"><div><span>Игрок</span><strong>unknown_314</strong></div><div><span>Время</span><strong>8.42 сек</strong></div><div><span>Событий</span><strong>4</strong></div></div>
+          <div class="timeline">
+            <article><time>14:27:11</time><i class="clean"></i><div><span>ЗАГРУЗКА</span><strong>Архив скачан из Telegram</strong><small>Папка «Загрузки» · build_1.21.zip</small></div></article>
+            <article><time>14:28:03</time><i class="danger"></i><div><span>ЗАПУСК</span><strong>Открыта неизвестная программа</strong><small>Windows запомнила время и путь запуска</small></div></article>
+            <article><time>14:31:44</time><i class="warn"></i><div><span>ОЧИСТКА</span><strong>Удалено содержимое временной папки</strong><small>37 файлов удалено за несколько секунд</small></div></article>
+            <article><time>14:32:08</time><i class="danger"></i><div><span>СОВПАДЕНИЕ</span><strong>Найден связанный след Nursultan</strong><small>Три независимых события подтверждают связь</small></div></article>
+          </div>
+          <div class="timeline-export"><span>ПРОВЕРКА ЗАВЕРШЕНА · 14:32:12</span><button type="button" id="exportDemo">Сохранить отчёт <i>↗</i></button></div>
+          <div class="card-glare"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section compare-section" aria-labelledby="compareTitle">
+      <div class="shell">
+        <div class="section-heading centered" data-reveal>
+          <div class="section-id"><i></i><b>СРАВНЕНИЕ</b></div>
+          <h2 id="compareTitle">Меньше рутины.<br><em>Больше ясности.</em></h2>
+        </div>
+
+        <div class="compare-table" data-reveal>
+          <div class="compare-row compare-head"><span>Критерий</span><span>Ручная проверка</span><span><i class="mini-brand"></i> FT Checker</span></div>
+          <div class="compare-row"><span>Время проверки</span><span>15–30 минут</span><strong>~8 секунд</strong></div>
+          <div class="compare-row"><span>Удалённые файлы</span><span><i class="no">×</i> часто пропускает</span><strong><i class="yes">✓</i> находит следы</strong></div>
+          <div class="compare-row"><span>Человеческий фактор</span><span><i class="no">×</i> высокий</span><strong><i class="yes">✓</i> минимум</strong></div>
+          <div class="compare-row"><span>Готовый отчёт</span><span><i class="no">×</i> вручную</span><strong><i class="yes">✓</i> один клик</strong></div>
+          <div class="compare-row"><span>Стоимость</span><span>время команды</span><strong>Бесплатно</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section faq-section" id="faq" aria-labelledby="faqTitle">
+      <div class="shell faq-layout">
+        <div class="faq-heading" data-reveal>
+          <div class="section-id"><i></i><b>ВОПРОСЫ И ОТВЕТЫ</b></div>
+          <h2 id="faqTitle">Коротко о<br><em>главном.</em></h2>
+          <p>Основные ответы собраны здесь. Актуальная версия всегда доступна в разделе загрузки.</p>
+          <a href="#download">Скачать Checker <i>↗</i></a>
+        </div>
+
+        <div class="faq-list" data-reveal>
+          <article class="faq-item open">
+            <button type="button" aria-expanded="true"><span aria-hidden="true"></span><b>Это чит?</b><i></i></button>
+            <div class="faq-answer"><p>Нет. FunTime Checker — инструмент для проверяющих и модераторов. Он ищет следы читов во время добровольной проверки, а не помогает получать преимущество в игре.</p></div>
+          </article>
+          <article class="faq-item">
+            <button type="button" aria-expanded="false"><span aria-hidden="true"></span><b>Почему скан занимает всего несколько секунд?</b><i></i></button>
+            <div class="faq-answer"><p>Checker получает список файлов напрямую из Windows, поэтому ему не нужно по очереди открывать миллионы папок. После этого несколько частей проверки работают одновременно.</p></div>
+          </article>
+          <article class="faq-item">
+            <button type="button" aria-expanded="false"><span aria-hidden="true"></span><b>Если чит удалили перед проверкой?</b><i></i></button>
+            <div class="faq-answer"><p>Да, часто находит. Windows сохраняет историю запусков, удалений и недавних действий. Удаление самого файла не стирает эту историю, а попытка очистки отмечается отдельно.</p></div>
+          </article>
+          <article class="faq-item">
+            <button type="button" aria-expanded="false"><span aria-hidden="true"></span><b>Какие системы поддерживаются?</b><i></i></button>
+            <div class="faq-answer"><p>Windows 10 и Windows 11 x64. Права администратора нужны, чтобы Checker мог прочитать защищённую системную историю.</p></div>
+          </article>
+          <article class="faq-item">
+            <button type="button" aria-expanded="false"><span aria-hidden="true"></span><b>Это безопасно и бесплатно?</b><i></i></button>
+            <div class="faq-answer"><p>Да. Checker бесплатен. Анализ выполняется локально: данные не отправляются в сеть, а файлы игрока остаются без изменений.</p></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="download-section" id="download" aria-labelledby="downloadTitle">
+      <div class="download-grid" aria-hidden="true"></div>
+      <div class="download-orb" data-parallax="-0.02" aria-hidden="true"><span></span><i></i><b></b></div>
+      <div class="shell download-inner" data-reveal>
+        <div class="status-pill dark"><i></i><span>ГОТОВ К ПРОВЕРКЕ</span><b>БЕСПЛАТНО · ЛОКАЛЬНО</b></div>
+        <h2 id="downloadTitle">Проверяй быстрее.<br>Решай <em>увереннее.</em></h2>
+        <p>Скачай FunTime Checker и получай понятный результат вместо получаса ручного поиска по папкам.</p>
+        <a class="download-button magnetic" href="https://github.com/funtimecheker" target="_blank" rel="noopener">
+          <span><small>Последняя версия</small>Скачать для Windows</span>
+          <i>↗</i>
+        </a>
+        <div class="download-meta"><span>Windows 10 и 11</span><i></i><span>~4 МБ</span><i></i><span>Без установки</span><i></i><span>Без отправки данных</span></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="shell footer-main">
+      <div>
+        <a class="brand footer-brand" href="#top">
+          <span class="brand-mark" aria-hidden="true"><i></i><b></b></span>
+          <span class="brand-type">FUN<em>TIME</em><small>CHECKER</small></span>
+        </a>
+        <p>Быстрый и понятный инструмент для проверяющих и модераторов FunTime.</p>
+      </div>
+      <div class="footer-links"><span>Навигация</span><a href="#search">Как работает</a><a href="#features">Возможности</a><a href="#coverage">Что проверяет</a><a href="#faq">Вопросы</a></div>
+      <div class="footer-links"><span>Проект</span><a href="#faq">Поддержка</a><a href="#evidence">Пример отчёта</a><a href="#download">Скачать</a></div>
+      <div class="footer-status"><span><i></i> ПРОЕКТ РАБОТАЕТ</span><b>ВЕРСИЯ 2.4.1</b><b>СБОРКА 2026.07</b></div>
+    </div>
+    <div class="shell footer-bottom"><span>© <b id="year"></b> FUNTIME CHECKER</span><span>Фанатский проект, не аффилирован с сервером FunTime.</span><a href="#top">НАВЕРХ ↑</a></div>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"><i>✓</i><span>Демо-отчёт подготовлен</span></div>
+  <script src="assets/app.js"></script>
+</body>
+</html>
