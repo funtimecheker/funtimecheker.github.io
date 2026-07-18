@@ -3,8 +3,39 @@
 
   const doc = document.documentElement;
   const body = document.body;
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const finePointerQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+  const liteMotionQuery = window.matchMedia("(max-width: 760px), (pointer: coarse)");
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const reducedMotion = reducedMotionQuery.matches;
+  const finePointer = finePointerQuery.matches;
+  const liteMotion = !reducedMotion && (
+    liteMotionQuery.matches
+    || connection?.saveData
+    || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)
+  );
+  const motionTier = reducedMotion ? "reduced" : (liteMotion ? "lite" : "full");
+  const fullMotion = motionTier === "full";
+  doc.dataset.motion = motionTier;
+
+  const transientAnimations = new WeakMap();
+  const animateMotion = (element, keyframes, options = {}) => {
+    if (!element || reducedMotion || typeof element.animate !== "function") return null;
+    transientAnimations.get(element)?.cancel();
+    const animation = element.animate(keyframes, {
+      duration: 320,
+      easing: "cubic-bezier(.16,1,.3,1)",
+      ...options
+    });
+    transientAnimations.set(element, animation);
+    animation.finished.then(() => {
+      if (transientAnimations.get(element) === animation) {
+        animation.cancel();
+        transientAnimations.delete(element);
+      }
+    }).catch(() => {});
+    return animation;
+  };
 
   /* --------------------------------------------------------------
      Boot sequence
@@ -43,6 +74,57 @@
   if (year) year.textContent = String(new Date().getFullYear());
 
   /* --------------------------------------------------------------
+     Shared scroll motion frame
+     -------------------------------------------------------------- */
+  const motionFrameTasks = new Set();
+  let motionFrame = 0;
+  let motionScrollY = window.scrollY;
+  let motionScrollPending = true;
+  let motionLayoutVersion = 0;
+
+  const scheduleMotionFrame = () => {
+    if (!motionFrame && !document.hidden) motionFrame = requestAnimationFrame(runMotionFrame);
+  };
+
+  const runMotionFrame = (now) => {
+    motionFrame = 0;
+    const y = window.scrollY;
+    const delta = y - motionScrollY;
+    const scrollChanged = motionScrollPending || Math.abs(delta) > 0.01;
+    motionScrollPending = false;
+    motionScrollY = y;
+    let keepAlive = false;
+    motionFrameTasks.forEach((task) => {
+      if (task({ now, y, delta, scrollChanged }) === true) keepAlive = true;
+    });
+    if (keepAlive) scheduleMotionFrame();
+  };
+
+  const registerMotionTask = (task) => {
+    motionFrameTasks.add(task);
+    motionScrollPending = true;
+    scheduleMotionFrame();
+    return () => motionFrameTasks.delete(task);
+  };
+
+  window.addEventListener("scroll", () => {
+    motionLayoutVersion += 1;
+    motionScrollPending = true;
+    scheduleMotionFrame();
+  }, { passive: true });
+  window.addEventListener("resize", () => {
+    motionLayoutVersion += 1;
+    motionScrollPending = true;
+    scheduleMotionFrame();
+  }, { passive: true });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      motionScrollPending = true;
+      scheduleMotionFrame();
+    }
+  });
+
+  /* --------------------------------------------------------------
      Header, scroll progress and section spy
      -------------------------------------------------------------- */
   const header = document.getElementById("siteHeader");
@@ -52,10 +134,9 @@
     .map((link) => document.getElementById(link.dataset.section))
     .filter(Boolean);
   let previousScroll = window.scrollY;
-  let scrollTicking = false;
 
-  const updateScrollUI = () => {
-    const y = window.scrollY;
+  const updateScrollUI = ({ y, scrollChanged }) => {
+    if (!scrollChanged) return false;
     const max = Math.max(1, doc.scrollHeight - window.innerHeight);
     if (progress) progress.style.transform = `scaleX(${Math.min(1, y / max)})`;
     if (header) {
@@ -64,16 +145,9 @@
       header.classList.toggle("header-hidden", !menuOpen && y > previousScroll && y > 520);
     }
     previousScroll = y;
-    scrollTicking = false;
+    return false;
   };
-
-  window.addEventListener("scroll", () => {
-    if (!scrollTicking) {
-      scrollTicking = true;
-      requestAnimationFrame(updateScrollUI);
-    }
-  }, { passive: true });
-  updateScrollUI();
+  registerMotionTask(updateScrollUI);
 
   if ("IntersectionObserver" in window) {
     const spy = new IntersectionObserver((entries) => {
@@ -163,15 +237,184 @@
     counterItems.forEach(animateCounter);
   }
 
-  const motionZones = [...document.querySelectorAll(".scanner, .feature-card, .layer-display, .download-section, .ticker")];
+  const motionZones = [...document.querySelectorAll(
+    ".scanner, .ticker, .search-stage, .feature-card, .layer-display, .workflow, .timeline-window, .compare-table, .faq-list, .download-section"
+  )];
   motionZones.forEach((zone) => zone.classList.add("motion-zone"));
   if ("IntersectionObserver" in window && !reducedMotion) {
     const motionObserver = new IntersectionObserver((entries) => {
       entries.forEach((entry) => entry.target.classList.toggle("is-inview", entry.isIntersecting));
+      scheduleMotionFrame();
     }, { rootMargin: "120px 0px", threshold: 0 });
     motionZones.forEach((zone) => motionObserver.observe(zone));
   } else {
     motionZones.forEach((zone) => zone.classList.add("is-inview"));
+  }
+
+  const ticker = document.querySelector(".ticker");
+  const tickerTrack = ticker?.querySelector(".ticker-track");
+  if (fullMotion && ticker && tickerTrack) {
+    let tickerAnimation;
+    let tickerRate = 1;
+    let tickerTargetRate = 1;
+    const resolveTickerAnimation = () => {
+      tickerAnimation ||= tickerTrack.getAnimations().find((animation) => animation.effect?.target === tickerTrack);
+      return tickerAnimation;
+    };
+    const setTickerRate = (rate) => {
+      const animation = resolveTickerAnimation();
+      if (!animation) return;
+      if (typeof animation.updatePlaybackRate === "function") animation.updatePlaybackRate(rate);
+      else animation.playbackRate = rate;
+    };
+
+    registerMotionTask(({ delta, scrollChanged }) => {
+      if (!ticker.classList.contains("is-inview")) {
+        tickerRate = 1;
+        tickerTargetRate = 1;
+        setTickerRate(1);
+        return false;
+      }
+      if (scrollChanged && Math.abs(delta) > 0.5) {
+        tickerTargetRate = Math.min(2.15, 1 + Math.abs(delta) / 42);
+      } else {
+        tickerTargetRate += (1 - tickerTargetRate) * 0.16;
+      }
+      tickerRate += (tickerTargetRate - tickerRate) * 0.2;
+      setTickerRate(tickerRate);
+      return Math.abs(tickerTargetRate - 1) > 0.01 || Math.abs(tickerRate - 1) > 0.01;
+    });
+  }
+
+  /* --------------------------------------------------------------
+     Cinematic pointer depth — composed into the shared frame
+     -------------------------------------------------------------- */
+  const heroMotion = document.querySelector(".hero");
+  if (fullMotion && heroMotion) {
+    let heroRect;
+    let heroPointerX = 0;
+    let heroPointerY = 0;
+    let heroPointerPending = false;
+    let heroPointerInside = false;
+    let heroScrollPending = true;
+
+    const measureHeroMotion = () => {
+      const rect = heroMotion.getBoundingClientRect();
+      heroRect = {
+        left: rect.left,
+        width: Math.max(1, rect.width),
+        height: Math.max(1, rect.height),
+        documentTop: rect.top + window.scrollY
+      };
+    };
+
+    heroMotion.addEventListener("pointerenter", (event) => {
+      measureHeroMotion();
+      heroPointerInside = true;
+      heroPointerX = event.clientX;
+      heroPointerY = event.clientY;
+      heroPointerPending = true;
+      scheduleMotionFrame();
+    }, { passive: true });
+    heroMotion.addEventListener("pointermove", (event) => {
+      heroPointerX = event.clientX;
+      heroPointerY = event.clientY;
+      heroPointerPending = true;
+      scheduleMotionFrame();
+    }, { passive: true });
+    heroMotion.addEventListener("pointerleave", () => {
+      heroPointerInside = false;
+      heroPointerPending = true;
+      scheduleMotionFrame();
+    });
+
+    registerMotionTask(({ y, scrollChanged }) => {
+      if (!heroRect) measureHeroMotion();
+      if (heroPointerPending) {
+        heroPointerPending = false;
+        if (heroPointerInside) {
+          const px = Math.max(0, Math.min(1, (heroPointerX - heroRect.left) / heroRect.width));
+          const viewportTop = heroRect.documentTop - window.scrollY;
+          const py = Math.max(0, Math.min(1, (heroPointerY - viewportTop) / heroRect.height));
+          heroMotion.style.setProperty("--hero-lens-x", `${px * 100}%`);
+          heroMotion.style.setProperty("--hero-lens-y", `${py * 100}%`);
+          heroMotion.style.setProperty("--hero-copy-x", `${(px - 0.5) * -6}px`);
+          heroMotion.style.setProperty("--hero-copy-y", `${(py - 0.5) * -4}px`);
+          heroMotion.style.setProperty("--hero-scanner-x", `${(px - 0.5) * 16}px`);
+          heroMotion.style.setProperty("--hero-scanner-y", `${(py - 0.5) * 11}px`);
+        } else {
+          ["--hero-lens-x", "--hero-lens-y", "--hero-copy-x", "--hero-copy-y", "--hero-scanner-x", "--hero-scanner-y"]
+            .forEach((property) => heroMotion.style.removeProperty(property));
+        }
+      }
+      if (scrollChanged || heroScrollPending) {
+        heroScrollPending = false;
+        const progressValue = Math.max(0, Math.min(1, (y - heroRect.documentTop) / Math.max(1, heroRect.height * 0.86)));
+        heroMotion.style.setProperty("--hero-scroll-shift", `${progressValue * 18}px`);
+        heroMotion.style.setProperty("--hero-scanner-scale", String(1 - progressValue * 0.055));
+        heroMotion.style.setProperty("--hero-scanner-rotate", `${progressValue * 2.5}deg`);
+        heroMotion.style.setProperty("--hero-grid-scale", String(1.04 + progressValue * 0.05));
+        heroMotion.style.setProperty("--hero-grid-opacity", String(0.2 - progressValue * 0.11));
+      }
+      return false;
+    });
+    if ("ResizeObserver" in window) new ResizeObserver(measureHeroMotion).observe(heroMotion);
+  }
+
+  const downloadMotion = document.querySelector(".download-section");
+  if (fullMotion && downloadMotion) {
+    let downloadRect;
+    let downloadPointerX = 0;
+    let downloadPointerY = 0;
+    let downloadPointerPending = false;
+    let downloadPointerInside = false;
+
+    const measureDownloadMotion = () => {
+      const rect = downloadMotion.getBoundingClientRect();
+      downloadRect = {
+        left: rect.left,
+        width: Math.max(1, rect.width),
+        height: Math.max(1, rect.height),
+        documentTop: rect.top + window.scrollY
+      };
+    };
+    downloadMotion.addEventListener("pointerenter", (event) => {
+      measureDownloadMotion();
+      downloadPointerInside = true;
+      downloadPointerX = event.clientX;
+      downloadPointerY = event.clientY;
+      downloadPointerPending = true;
+      scheduleMotionFrame();
+    }, { passive: true });
+    downloadMotion.addEventListener("pointermove", (event) => {
+      downloadPointerX = event.clientX;
+      downloadPointerY = event.clientY;
+      downloadPointerPending = true;
+      scheduleMotionFrame();
+    }, { passive: true });
+    downloadMotion.addEventListener("pointerleave", () => {
+      downloadPointerInside = false;
+      downloadPointerPending = true;
+      scheduleMotionFrame();
+    });
+
+    registerMotionTask(() => {
+      if (!downloadPointerPending) return false;
+      downloadPointerPending = false;
+      if (!downloadRect) measureDownloadMotion();
+      if (downloadPointerInside) {
+        const x = Math.max(0, Math.min(downloadRect.width, downloadPointerX - downloadRect.left));
+        const viewportTop = downloadRect.documentTop - window.scrollY;
+        const y = Math.max(0, Math.min(downloadRect.height, downloadPointerY - viewportTop));
+        downloadMotion.style.setProperty("--download-lens-x", `${x}px`);
+        downloadMotion.style.setProperty("--download-lens-y", `${y}px`);
+      } else {
+        downloadMotion.style.removeProperty("--download-lens-x");
+        downloadMotion.style.removeProperty("--download-lens-y");
+      }
+      return false;
+    });
+    if ("ResizeObserver" in window) new ResizeObserver(measureDownloadMotion).observe(downloadMotion);
   }
 
   /* --------------------------------------------------------------
@@ -216,65 +459,167 @@
       item.addEventListener("pointerleave", () => cursor?.classList.remove("hovering"));
     });
 
-    document.querySelectorAll(".magnetic").forEach((item) => {
-      let rect;
-      item.addEventListener("pointerenter", () => { rect = item.getBoundingClientRect(); });
-      item.addEventListener("pointermove", (event) => {
-        rect ||= item.getBoundingClientRect();
-        const x = event.clientX - rect.left - rect.width / 2;
-        const y = event.clientY - rect.top - rect.height / 2;
-        item.style.transform = `translate3d(${x * 0.1}px, ${y * 0.12}px, 0)`;
+    if (fullMotion) {
+      document.querySelectorAll(".magnetic").forEach((item) => {
+        let rect;
+        let rectVersion = -1;
+        let pointerX = 0;
+        let pointerY = 0;
+        let magneticFrame = 0;
+        const renderMagnetic = () => {
+          magneticFrame = 0;
+          if (!rect) return;
+          const x = pointerX - rect.left - rect.width / 2;
+          const y = pointerY - rect.top - rect.height / 2;
+          item.style.transform = `translate3d(${x * 0.1}px, ${y * 0.12}px, 0)`;
+        };
+        const measureMagnetic = () => {
+          rect = item.getBoundingClientRect();
+          rectVersion = motionLayoutVersion;
+        };
+        item.addEventListener("pointerenter", () => {
+          measureMagnetic();
+          item.classList.add("is-magnetic");
+        });
+        item.addEventListener("pointermove", (event) => {
+          if (!rect || rectVersion !== motionLayoutVersion) measureMagnetic();
+          pointerX = event.clientX;
+          pointerY = event.clientY;
+          if (!magneticFrame) magneticFrame = requestAnimationFrame(renderMagnetic);
+        }, { passive: true });
+        item.addEventListener("pointerleave", () => {
+          if (magneticFrame) cancelAnimationFrame(magneticFrame);
+          magneticFrame = 0;
+          item.style.transform = "";
+          item.classList.remove("is-magnetic");
+          rect = undefined;
+        });
       });
-      item.addEventListener("pointerleave", () => {
-        item.style.transform = "";
-        rect = undefined;
-      });
-    });
 
-    document.querySelectorAll("[data-tilt]").forEach((card) => {
-      let rect;
-      card.addEventListener("pointerenter", () => { rect = card.getBoundingClientRect(); });
-      card.addEventListener("pointermove", (event) => {
-        rect ||= card.getBoundingClientRect();
-        const px = (event.clientX - rect.left) / rect.width;
-        const py = (event.clientY - rect.top) / rect.height;
-        const rx = (0.5 - py) * 2.6;
-        const ry = (px - 0.5) * 3.2;
-        card.style.transform = `perspective(1100px) rotateX(${rx}deg) rotateY(${ry}deg)`;
-        card.style.setProperty("--gx", `${px * 100}%`);
-        card.style.setProperty("--gy", `${py * 100}%`);
+      document.querySelectorAll("[data-tilt]").forEach((card) => {
+        let rect;
+        let rectVersion = -1;
+        let pointerX = 0;
+        let pointerY = 0;
+        let glareHalfWidth = 110;
+        let glareHalfHeight = 110;
+        let tiltFrame = 0;
+        const glare = card.querySelector(".card-glare");
+        const renderTilt = () => {
+          tiltFrame = 0;
+          if (!rect) return;
+          const px = Math.max(0, Math.min(1, (pointerX - rect.left) / rect.width));
+          const py = Math.max(0, Math.min(1, (pointerY - rect.top) / rect.height));
+          const rx = (0.5 - py) * 2.6;
+          const ry = (px - 0.5) * 3.2;
+          card.style.transform = `perspective(1100px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+          card.style.setProperty("--glare-x", `${pointerX - rect.left - glareHalfWidth}px`);
+          card.style.setProperty("--glare-y", `${pointerY - rect.top - glareHalfHeight}px`);
+        };
+        const measureTilt = () => {
+          rect = card.getBoundingClientRect();
+          rectVersion = motionLayoutVersion;
+          if (glare) {
+            const glareRect = glare.getBoundingClientRect();
+            glareHalfWidth = glareRect.width / 2 || 110;
+            glareHalfHeight = glareRect.height / 2 || 110;
+          }
+        };
+        card.addEventListener("pointerenter", () => {
+          measureTilt();
+          card.classList.add("is-tilting");
+        });
+        card.addEventListener("pointermove", (event) => {
+          if (!rect || rectVersion !== motionLayoutVersion) measureTilt();
+          pointerX = event.clientX;
+          pointerY = event.clientY;
+          if (!tiltFrame) tiltFrame = requestAnimationFrame(renderTilt);
+        }, { passive: true });
+        card.addEventListener("pointerleave", () => {
+          if (tiltFrame) cancelAnimationFrame(tiltFrame);
+          tiltFrame = 0;
+          card.style.transform = "";
+          card.style.removeProperty("--glare-x");
+          card.style.removeProperty("--glare-y");
+          card.classList.remove("is-tilting");
+          rect = undefined;
+        });
       });
-      card.addEventListener("pointerleave", () => {
-        card.style.transform = "";
-        rect = undefined;
-      });
-    });
+    }
   }
 
   /* --------------------------------------------------------------
      Lightweight parallax
      -------------------------------------------------------------- */
   const parallaxItems = [...document.querySelectorAll("[data-parallax]")];
-  if (!reducedMotion && finePointer && parallaxItems.length) {
-    let parallaxTicking = false;
-    const updateParallax = () => {
-      const center = window.scrollY + window.innerHeight / 2;
-      parallaxItems.forEach((item) => {
-        const speed = Number(item.dataset.parallax || 0);
-        const rect = item.getBoundingClientRect();
-        const itemCenter = rect.top + window.scrollY + rect.height / 2;
-        const offset = Math.max(-70, Math.min(70, (center - itemCenter) * speed));
-        item.style.translate = `0 ${offset}px`;
+  if (fullMotion && parallaxItems.length) {
+    const parallaxStates = parallaxItems.map((item) => ({
+      item,
+      speed: Number(item.dataset.parallax || 0),
+      fixed: window.getComputedStyle(item).position === "fixed",
+      center: 0,
+      offset: 0,
+      active: true
+    }));
+    const parallaxStateByItem = new WeakMap(parallaxStates.map((state) => [state.item, state]));
+    let parallaxMeasureFrame = 0;
+    let parallaxNeedsUpdate = true;
+
+    const measureParallax = () => {
+      parallaxMeasureFrame = 0;
+      const y = window.scrollY;
+      const measurements = parallaxStates.map((state) => {
+        const rect = state.item.getBoundingClientRect();
+        const baseTop = rect.top - state.offset;
+        return state.fixed
+          ? baseTop + rect.height / 2
+          : baseTop + y + rect.height / 2;
       });
-      parallaxTicking = false;
+      parallaxStates.forEach((state, index) => { state.center = measurements[index]; });
+      parallaxNeedsUpdate = true;
+      scheduleMotionFrame();
     };
-    window.addEventListener("scroll", () => {
-      if (!parallaxTicking) {
-        parallaxTicking = true;
-        requestAnimationFrame(updateParallax);
-      }
-    }, { passive: true });
-    updateParallax();
+    const scheduleParallaxMeasure = () => {
+      if (!parallaxMeasureFrame) parallaxMeasureFrame = requestAnimationFrame(measureParallax);
+    };
+
+    registerMotionTask(({ y, scrollChanged }) => {
+      if (!scrollChanged && !parallaxNeedsUpdate) return false;
+      const documentCenter = y + window.innerHeight / 2;
+      const offsets = parallaxStates.map((state) => {
+        if (!state.active) return state.offset;
+        const raw = state.fixed
+          ? y * state.speed
+          : (documentCenter - state.center) * state.speed;
+        return Math.max(-70, Math.min(70, raw));
+      });
+      parallaxStates.forEach((state, index) => {
+        if (!state.active || Math.abs(offsets[index] - state.offset) < 0.05) return;
+        state.offset = offsets[index];
+        state.item.style.translate = `0 ${state.offset}px`;
+      });
+      parallaxNeedsUpdate = false;
+      return false;
+    });
+
+    if ("IntersectionObserver" in window) {
+      const parallaxObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          const state = parallaxStateByItem.get(entry.target);
+          if (state) state.active = entry.isIntersecting;
+        });
+        scheduleParallaxMeasure();
+      }, { rootMargin: "160px 0px", threshold: 0 });
+      parallaxStates.forEach((state) => parallaxObserver.observe(state.item));
+    }
+    if ("ResizeObserver" in window) {
+      const parallaxResizeObserver = new ResizeObserver(scheduleParallaxMeasure);
+      parallaxStates.forEach((state) => parallaxResizeObserver.observe(state.item));
+    }
+    window.addEventListener("resize", scheduleParallaxMeasure, { passive: true });
+    window.addEventListener("load", scheduleParallaxMeasure, { once: true });
+    document.fonts?.ready?.then(scheduleParallaxMeasure).catch(() => {});
+    scheduleParallaxMeasure();
   }
 
   /* --------------------------------------------------------------
@@ -284,23 +629,35 @@
   if (canvas && !reducedMotion) {
     const context = canvas.getContext("2d", { alpha: true, desynchronized: true });
     const hero = canvas.closest(".hero");
-    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    const lowPower = window.matchMedia("(max-width: 760px)").matches || connection?.saveData || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
+    const lowPower = !fullMotion;
     const targetFPS = lowPower ? 30 : 60;
     const frameInterval = 1000 / targetFPS;
     let width = 0;
     let height = 0;
     let ratio = 1;
     let particles = [];
+    let comets = [];
     let canvasRect;
+    let canvasRectVersion = -1;
     let canvasVisible = true;
     let canvasFrame = 0;
     let resizeFrame = 0;
     let lastFrame = 0;
     let mouse = { x: -1000, y: -1000 };
 
+    const resetComet = (comet, initial = false) => {
+      comet.length = 38 + Math.random() * 38;
+      comet.vx = 1.05 + Math.random() * 0.65;
+      comet.vy = 0.18 + Math.random() * 0.34;
+      comet.life = 280 + Math.random() * 320;
+      comet.age = initial ? Math.random() * comet.life : 0;
+      comet.x = initial ? Math.random() * width : -comet.length - Math.random() * width * 0.25;
+      comet.y = Math.random() * Math.max(1, height * 0.78);
+    };
+
     const resizeCanvas = () => {
       canvasRect = canvas.getBoundingClientRect();
+      canvasRectVersion = motionLayoutVersion;
       width = canvasRect.width;
       height = canvasRect.height;
       ratio = Math.min(lowPower ? 1 : 1.5, window.devicePixelRatio || 1);
@@ -317,6 +674,11 @@
         phase: Math.random() * Math.PI * 2,
         pale: index % 6 === 0
       }));
+      comets = fullMotion ? Array.from({ length: 2 }, () => {
+        const comet = {};
+        resetComet(comet, true);
+        return comet;
+      }) : [];
     };
 
     const requestResize = () => {
@@ -328,7 +690,10 @@
     };
 
     hero?.addEventListener("pointermove", (event) => {
-      canvasRect ||= canvas.getBoundingClientRect();
+      if (!canvasRect || canvasRectVersion !== motionLayoutVersion) {
+        canvasRect = canvas.getBoundingClientRect();
+        canvasRectVersion = motionLayoutVersion;
+      }
       mouse.x = event.clientX - canvasRect.left;
       mouse.y = event.clientY - canvasRect.top;
     }, { passive: true });
@@ -389,6 +754,34 @@
         context.fillStyle = particle.pale ? `rgba(244,242,243,${pulse * .55})` : `rgba(155,11,38,${pulse})`;
         context.fill();
       });
+
+      if (comets.length) {
+        context.beginPath();
+        comets.forEach((comet) => {
+          comet.x += comet.vx * delta;
+          comet.y += comet.vy * delta;
+          comet.age += delta;
+          if (comet.x > width + comet.length || comet.y > height + 20 || comet.age > comet.life) {
+            resetComet(comet);
+          }
+          const magnitude = Math.max(0.001, Math.hypot(comet.vx, comet.vy));
+          const tailX = comet.x - (comet.vx / magnitude) * comet.length;
+          const tailY = comet.y - (comet.vy / magnitude) * comet.length;
+          context.moveTo(tailX, tailY);
+          context.lineTo(comet.x, comet.y);
+        });
+        context.strokeStyle = "rgba(205,55,82,.2)";
+        context.lineWidth = 0.75;
+        context.stroke();
+
+        context.beginPath();
+        comets.forEach((comet) => {
+          context.moveTo(comet.x + 1.15, comet.y);
+          context.arc(comet.x, comet.y, 1.15, 0, Math.PI * 2);
+        });
+        context.fillStyle = "rgba(255,225,232,.72)";
+        context.fill();
+      }
     };
 
     const startCanvas = () => {
@@ -502,7 +895,7 @@
     return evidence.filter((item) => `${item.path} ${item.source} ${item.label}`.toLowerCase().includes(query));
   };
 
-  const renderSearch = (query = "") => {
+  const renderSearch = (query = "", withMotion = true) => {
     if (!searchResults) return;
     const rows = filterEvidence(query);
     searchResults.innerHTML = rows.slice(0, 8).map((item, index) => `
@@ -522,10 +915,22 @@
     if (resultStatus) {
       resultStatus.innerHTML = rows.length ? "<i></i> ПОИСК ЗАВЕРШЁН" : "<i></i> НИЧЕГО НЕ НАЙДЕНО";
     }
+    if (withMotion) {
+      const duration = liteMotion ? 190 : 280;
+      const resultSurface = rows.length ? searchResults : resultEmpty;
+      animateMotion(resultSurface, [
+        { opacity: 0.28, transform: "translate3d(0,7px,0)" },
+        { opacity: 1, transform: "translate3d(0,0,0)" }
+      ], { duration });
+      animateMotion(resultStatus, [
+        { opacity: 0.45, transform: "scale(.96)" },
+        { opacity: 1, transform: "scale(1)" }
+      ], { duration: Math.max(160, duration - 40) });
+    }
   };
 
   if (searchInput) {
-    renderSearch(searchInput.value);
+    renderSearch(searchInput.value, false);
     searchInput.addEventListener("input", () => {
       queryButtons.forEach((button) => button.classList.toggle("active", button.dataset.query === searchInput.value));
       renderSearch(searchInput.value);
@@ -576,6 +981,9 @@
   ];
 
   const layerTabs = [...document.querySelectorAll(".coverage-tab")];
+  const layerDisplay = document.querySelector(".layer-display");
+  const radarNodes = [...document.querySelectorAll(".layer-radar .radar-node")];
+  const radarPulseRing = document.querySelector(".layer-radar .lr-c");
   const layerCopy = document.querySelector(".layer-copy");
   const layerCode = document.getElementById("layerCode");
   const layerTitle = document.getElementById("layerTitle");
@@ -591,12 +999,40 @@
       tab.setAttribute("aria-selected", String(active));
     });
     layerCopy?.classList.remove("changing");
-    void layerCopy?.offsetWidth;
-    layerCopy?.classList.add("changing");
     if (layerCode) layerCode.textContent = data.code;
     if (layerTitle) layerTitle.textContent = data.title;
     if (layerDescription) layerDescription.textContent = data.description;
-    if (layerList) layerList.innerHTML = data.items.map((item) => `<li><i></i><span>${escapeHTML(item)}</span><b>ПРОВЕРЕНО</b></li>`).join("");
+    if (layerList) {
+      layerList.innerHTML = data.items.map((item, itemIndex) => `<li style="--i:${itemIndex}"><i></i><span>${escapeHTML(item)}</span><b>ПРОВЕРЕНО</b></li>`).join("");
+    }
+
+    const duration = liteMotion ? 210 : 300;
+    animateMotion(layerCopy, [
+      { opacity: 0.3, transform: "translate3d(0,12px,0)" },
+      { opacity: 1, transform: "translate3d(0,0,0)" }
+    ], { duration });
+    animateMotion(layerDisplay, [
+      { transform: "scale(.992)" },
+      { transform: "scale(1)" }
+    ], { duration: duration + 60 });
+    radarNodes.forEach((node, nodeIndex) => {
+      animateMotion(node, [
+        { opacity: 0.25, transform: "scale(.65)" },
+        { opacity: 1, transform: "scale(1.8)", offset: 0.55 },
+        { opacity: 1, transform: "scale(1)" }
+      ], { duration: duration + 120, delay: nodeIndex * 55, fill: "both" });
+    });
+    animateMotion(radarPulseRing, [
+      { opacity: 0.2, transform: "scale(.82)" },
+      { opacity: 1, transform: "scale(1.08)", offset: 0.7 },
+      { opacity: 1, transform: "scale(1)" }
+    ], { duration: duration + 180 });
+    layerList?.querySelectorAll("li").forEach((item, itemIndex) => {
+      animateMotion(item, [
+        { opacity: 0, transform: "translate3d(-12px,0,0)" },
+        { opacity: 1, transform: "translate3d(0,0,0)" }
+      ], { duration, delay: itemIndex * 55, fill: "both" });
+    });
   };
   layerTabs.forEach((tab) => tab.addEventListener("click", () => selectLayer(Number(tab.dataset.layer))));
 
@@ -607,24 +1043,59 @@
   const workflowProgress = document.getElementById("workflowProgress");
   const workflowSteps = [...document.querySelectorAll(".workflow-step")];
   if (workflow && workflowProgress && workflowSteps.length) {
-    let workflowFrame = 0;
+    let workflowMeasureFrame = 0;
+    let workflowNeedsUpdate = true;
+    let workflowMetrics = { top: 0, height: 1, width: 1 };
     let currentWorkflowStep = -1;
-    const updateWorkflow = () => {
-      workflowFrame = 0;
+    const poppedWorkflowSteps = new WeakSet();
+
+    const measureWorkflow = () => {
+      workflowMeasureFrame = 0;
       const rect = workflow.getBoundingClientRect();
-      const viewportPoint = window.innerHeight * 0.64;
-      const normalized = Math.max(0, Math.min(1, (viewportPoint - rect.top) / Math.max(1, rect.height)));
+      workflowMetrics = {
+        top: rect.top + window.scrollY,
+        height: Math.max(1, rect.height),
+        width: Math.max(1, rect.width)
+      };
+      workflowNeedsUpdate = true;
+      scheduleMotionFrame();
+    };
+    const scheduleWorkflowMeasure = () => {
+      if (!workflowMeasureFrame) workflowMeasureFrame = requestAnimationFrame(measureWorkflow);
+    };
+
+    registerMotionTask(({ y, scrollChanged }) => {
+      if (!scrollChanged && !workflowNeedsUpdate) return false;
+      const viewportPoint = y + window.innerHeight * 0.64;
+      const normalized = Math.max(0, Math.min(1, (viewportPoint - workflowMetrics.top) / workflowMetrics.height));
       workflowProgress.style.transform = `scaleX(${normalized})`;
+      workflow.style.setProperty("--workflow-progress", String(normalized));
+      workflow.style.setProperty("--workflow-head-x", `${normalized * workflowMetrics.width}px`);
       const step = Math.min(workflowSteps.length - 1, Math.floor(normalized * workflowSteps.length));
       if (step !== currentWorkflowStep) {
         currentWorkflowStep = step;
         workflowSteps.forEach((item, index) => item.classList.toggle("active", index <= step));
       }
-    };
-    window.addEventListener("scroll", () => {
-      if (!workflowFrame) workflowFrame = requestAnimationFrame(updateWorkflow);
-    }, { passive: true });
-    updateWorkflow();
+      const activeStep = workflowSteps[step];
+      if (normalized > 0 && activeStep && !poppedWorkflowSteps.has(activeStep)) {
+        poppedWorkflowSteps.add(activeStep);
+        animateMotion(activeStep.querySelector(".step-icon"), [
+          { scale: 0.88, rotate: "-5deg" },
+          { scale: 1.07, rotate: "2deg", offset: 0.62 },
+          { scale: 1, rotate: "0deg" }
+        ], { duration: liteMotion ? 260 : 390 });
+        animateMotion(activeStep.querySelector("h3"), [
+          { opacity: 0.45, transform: "translate3d(0,6px,0)" },
+          { opacity: 1, transform: "translate3d(0,0,0)" }
+        ], { duration: liteMotion ? 210 : 300 });
+      }
+      workflowNeedsUpdate = false;
+      return false;
+    });
+
+    if ("ResizeObserver" in window) new ResizeObserver(scheduleWorkflowMeasure).observe(workflow);
+    window.addEventListener("resize", scheduleWorkflowMeasure, { passive: true });
+    measureWorkflow();
   }
 
   /* --------------------------------------------------------------
@@ -641,6 +1112,17 @@
       if (willOpen) {
         item.classList.add("open");
         button.setAttribute("aria-expanded", "true");
+      }
+      animateMotion(button.querySelector("b"), [
+        { transform: "translate3d(0,0,0)" },
+        { transform: "translate3d(7px,0,0)", offset: 0.48 },
+        { transform: "translate3d(0,0,0)" }
+      ], { duration: liteMotion ? 220 : 320 });
+      if (willOpen) {
+        animateMotion(item.querySelector(".faq-answer p"), [
+          { opacity: 0, transform: "translate3d(0,-7px,0)" },
+          { opacity: 1, transform: "translate3d(0,0,0)" }
+        ], { duration: liteMotion ? 240 : 360, delay: 45, fill: "both" });
       }
     });
   });
